@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Project>
+  <description>REST producer/consumer and Kafka consumer integration tests.</description>
+  <name>katalon-ifgtest</name>
+  <tag></tag>
+  <UUID>11f37a8c-7be5-4d5d-b25a-20b6bd478ce6</UUID>
+  <freeLicense>false</freeLicense>
+  <migratedVersion>5.9.0</migratedVersion>
+  <pageLoadTimeout>0</pageLoadTimeout>
+  <projectFileLocation>katalon-ifgtest.prj</projectFileLocation>
+  <sourceContent>
+    <sourceFolderList>
+      <sourceFolderConfiguration>
+        <folderName>Keywords</folderName>
+        <isTestArtifact>true</isTestArtifact>
+        <isIncluded>true</isIncluded>
+      </sourceFolderConfiguration>
+    </sourceFolderList>
+  </sourceContent>
+</Project>

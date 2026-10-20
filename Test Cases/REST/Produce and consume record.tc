@@ -1,0 +1,46 @@
+import com.kms.katalon.core.util.KeywordUtil
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+import internal.GlobalVariable as GlobalVariable
+
+import java.net.URI
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
+import java.time.Duration
+
+String baseUrl = (System.getenv('REST_BASE_URL') ?: GlobalVariable.REST_BASE_URL).toString().replaceAll('/+$', '')
+String collectionPath = (System.getenv('REST_COLLECTION_PATH') ?: GlobalVariable.REST_COLLECTION_PATH).toString()
+String authToken = (System.getenv('REST_AUTH_TOKEN') ?: GlobalVariable.REST_AUTH_TOKEN ?: '').toString()
+String collectionUrl = "${baseUrl}${collectionPath.startsWith('/') ? '' : '/'}${collectionPath}"
+String uniqueName = "katalon-ifg-${UUID.randomUUID()}"
+Map payload = [name: uniqueName, job: 'integration-test']
+
+HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build()
+HttpRequest.Builder createBuilder = HttpRequest.newBuilder(URI.create(collectionUrl))
+        .timeout(Duration.ofSeconds(20))
+        .header('Content-Type', 'application/json')
+        .header('Accept', 'application/json')
+        .POST(HttpRequest.BodyPublishers.ofString(JsonOutput.toJson(payload)))
+if (authToken) createBuilder.header('Authorization', "Bearer ${authToken}")
+
+HttpResponse<String> created = client.send(createBuilder.build(), HttpResponse.BodyHandlers.ofString())
+assert created.statusCode() in 200..299 : "POST ${collectionUrl} returned HTTP ${created.statusCode()}: ${created.body()}"
+Map createdBody = (Map) new JsonSlurper().parseText(created.body())
+assert createdBody.id != null : "POST response did not contain an id: ${created.body()}"
+
+String recordUrl = "${collectionUrl.replaceAll('/+$', '')}/${URLEncoder.encode(createdBody.id.toString(), 'UTF-8')}"
+HttpRequest.Builder readBuilder = HttpRequest.newBuilder(URI.create(recordUrl))
+        .timeout(Duration.ofSeconds(20))
+        .header('Accept', 'application/json')
+        .GET()
+if (authToken) readBuilder.header('Authorization', "Bearer ${authToken}")
+
+HttpResponse<String> consumed = client.send(readBuilder.build(), HttpResponse.BodyHandlers.ofString())
+assert consumed.statusCode() in 200..299 : "GET ${recordUrl} returned HTTP ${consumed.statusCode()}: ${consumed.body()}"
+Map consumedBody = (Map) new JsonSlurper().parseText(consumed.body())
+assert consumedBody.id.toString() == createdBody.id.toString() : 'GET returned a different record id'
+assert consumedBody.name == uniqueName : "GET returned unexpected name: ${consumedBody.name}"
+assert consumedBody.job == payload.job : "GET returned unexpected job: ${consumedBody.job}"
+
+KeywordUtil.logInfo("Created and retrieved record ${createdBody.id} at ${recordUrl}")

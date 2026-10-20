@@ -1,0 +1,15 @@
+import com.kms.katalon.core.util.KeywordUtil
+import internal.GlobalVariable as GlobalVariable
+
+String bootstrapServers = (System.getenv('KAFKA_BOOTSTRAP_SERVERS') ?: GlobalVariable.KAFKA_BOOTSTRAP_SERVERS).toString()
+String topic = (System.getenv('KAFKA_TOPIC') ?: GlobalVariable.KAFKA_TOPIC).toString()
+String groupId = (System.getenv('KAFKA_GROUP_ID') ?: GlobalVariable.KAFKA_GROUP_ID).toString()
+String expectedKey = (System.getenv('KAFKA_EXPECTED_KEY') ?: GlobalVariable.KAFKA_EXPECTED_KEY).toString()
+String expectedValue = (System.getenv('KAFKA_EXPECTED_VALUE') ?: GlobalVariable.KAFKA_EXPECTED_VALUE).toString()
+int timeoutSeconds = (System.getenv('KAFKA_TIMEOUT_SECONDS') ?: GlobalVariable.KAFKA_TIMEOUT_SECONDS).toString().toInteger()
+
+Map record = CustomKeywords.'ifg.KafkaConsumer.consumeMatching'(
+        bootstrapServers, topic, groupId, expectedKey, expectedValue, timeoutSeconds)
+assert record.key == expectedKey
+assert record.value == expectedValue
+KeywordUtil.logInfo("Consumed matching Kafka record from ${record.topic}, partition ${record.partition}, offset ${record.offset}")

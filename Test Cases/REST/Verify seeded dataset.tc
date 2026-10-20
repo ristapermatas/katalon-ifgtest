@@ -1,0 +1,51 @@
+import com.kms.katalon.core.util.KeywordUtil
+import com.kms.katalon.core.configuration.RunConfiguration
+import groovy.json.JsonSlurper
+import internal.GlobalVariable as GlobalVariable
+
+import java.net.URI
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
+import java.nio.file.Files
+import java.nio.file.Paths
+import java.time.Duration
+
+String baseUrl = (System.getenv('REST_BASE_URL') ?: GlobalVariable.REST_BASE_URL).toString().replaceAll('/+$', '')
+String collectionPath = (System.getenv('REST_COLLECTION_PATH') ?: GlobalVariable.REST_COLLECTION_PATH).toString()
+String authToken = (System.getenv('REST_AUTH_TOKEN') ?: GlobalVariable.REST_AUTH_TOKEN ?: '').toString()
+String collectionUrl = "${baseUrl}${collectionPath.startsWith('/') ? '' : '/'}${collectionPath}"
+
+// This project's CSV rows are simple unquoted name/job values.
+def csvPath = Paths.get(RunConfiguration.getProjectDir(), 'database', 'init', 'records.csv')
+assert Files.isRegularFile(csvPath) : "Dataset CSV was not found: ${csvPath}"
+List<Map<String, String>> expectedRecords = Files.readAllLines(csvPath, java.nio.charset.StandardCharsets.UTF_8)
+        .drop(1)
+        .findAll { it.trim() }
+        .collect { row ->
+            String[] columns = row.split(',', 2)
+            assert columns.length == 2 : "Invalid dataset row: ${row}"
+            [name: columns[0].trim(), job: columns[1].trim()]
+        }
+assert !expectedRecords.isEmpty() : "Dataset is empty: ${csvPath}"
+
+HttpRequest.Builder requestBuilder = HttpRequest.newBuilder(URI.create(collectionUrl))
+        .timeout(Duration.ofSeconds(20))
+        .header('Accept', 'application/json')
+        .GET()
+if (authToken) requestBuilder.header('Authorization', "Bearer ${authToken}")
+
+HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build()
+HttpResponse<String> response = client.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString())
+assert response.statusCode() == 200 : "GET ${collectionUrl} returned HTTP ${response.statusCode()}: ${response.body()}"
+assert response.headers().firstValue('content-type').orElse('').toLowerCase().contains('application/json') : 'Response is not JSON'
+
+List<Map> actualRecords = (List<Map>) new JsonSlurper().parseText(response.body())
+expectedRecords.each { expected ->
+    List<Map> matches = actualRecords.findAll { actual ->
+        actual.name == expected.name && actual.job == expected.job
+    }
+    assert matches.size() == 1 : "Expected exactly one seeded record ${expected}, found ${matches.size()}"
+}
+
+KeywordUtil.logInfo("Verified ${expectedRecords.size()} seeded records against ${actualRecords.size()} records returned by ${collectionUrl}")

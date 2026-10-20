@@ -1,0 +1,11 @@
+Reports/
+.cache/
+.gradle/
+bin/
+Libs/
+Drivers/*.jar
+downloads/
+tools/
+*.log
+.DS_Store
+Thumbs.db

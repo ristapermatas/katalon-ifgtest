@@ -1,0 +1,13 @@
+{
+  "name": "ifg-local-rest-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local REST API backed by the project's PostgreSQL test database",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+      "pg": "8.13.1"
+  }
+}
